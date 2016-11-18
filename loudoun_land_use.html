@@ -16,7 +16,7 @@
 
   //create the dataset w/ mappings
   var dataset = {
-   "url": "http://services1.arcgis.com/MxjRokvPm7bjslyR/ArcGIS/rest/services/Summarize%20Acres%20within%20Active_Applications_Dissolve/FeatureServer/0",
+   "url": "https://services1.arcgis.com/MxjRokvPm7bjslyR/ArcGIS/rest/services/Summarize%20Acres%20within%20Active_Applications_Dissolve/FeatureServer/0",
    "query": {
       "groupByFieldsForStatistics": "VAP_TYPE_S",
       "outStatistics": [{
@@ -37,7 +37,7 @@
       }
     }
   };
-  
+
   chart.tooltip = {
     "title": "{VAP_TYPE_S}",
     "content": "{SumAcresByTypes}"
