@@ -1,0 +1,366 @@
+<html>
+<head>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+  <script type="text/javascript" src="https://vega.github.io/vega/vega.min.js"></script>
+  <script type="text/javascript" src="https://npmcdn.com/arcgis-cedar/dist/cedar.js"></script>
+</head>
+<body>
+
+<div class="row">
+  <div style="width: 300px; height: 340px" id="chart"></div>
+
+</div>
+
+<style>
+.cedar-tooltip {
+  font-family: sans-serif;
+  padding-top: 10px;
+}
+
+g.mark-text {
+  fill: rgb(153, 153, 153);
+}
+
+</style>
+
+<script>
+  var chart = new Cedar(
+{
+  "specification": {
+    "inputs": [],
+    "template": {
+      "width": 1,
+      "height": 1,
+      "padding": "auto",
+      "data": [
+        {
+          "name": "dummy",
+          "url": "http://example.org",
+          "format": {
+            "type": "json",
+            "property": "features"
+          }
+        },
+        {
+          "name": "source",
+          "url": "https://ghudgins.github.io/cedar-play/LoudounData.csv",
+          "format": {
+            "type": "csv",
+            "parse": {
+              "date": "date"
+            }
+          },
+          "transform": [
+            {
+              "type": "filter",
+              "test": "datum[\"date\"] !== null && !isNaN(datum[\"date\"])"
+            },
+            {
+              "type": "formula",
+              "field": "month_date",
+              "expr": "datetime(0, month(datum[\"date\"]), 1, 0, 0, 0, 0)"
+            }
+          ]
+        },
+        {
+          "name": "summary",
+          "source": "source",
+          "transform": [
+            {
+              "type": "aggregate",
+              "groupby": [
+                "month_date",
+                "unit_type"
+              ],
+              "summarize": {
+                "*": [
+                  "count"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "stacked_scale",
+          "source": "summary",
+          "transform": [
+            {
+              "type": "aggregate",
+              "summarize": [
+                {
+                  "ops": [
+                    "sum"
+                  ],
+                  "field": "count"
+                }
+              ],
+              "groupby": [
+                "month_date"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "month",
+          "values": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "transform": [
+            {
+              "type": "formula",
+              "field": "date",
+              "expr": "datetime(0, datum[\"data\"], 1, 0, 0, 0, 0)"
+            }
+          ]
+        },
+        {
+          "name": "layout",
+          "source": "summary",
+          "transform": [
+            {
+              "type": "aggregate",
+              "summarize": [
+                {
+                  "field": "month_date",
+                  "ops": [
+                    "distinct"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "formula",
+              "field": "width",
+              "expr": "(12 + 1) * 21"
+            },
+            {
+              "type": "formula",
+              "field": "height",
+              "expr": "200"
+            }
+          ]
+        }
+      ],
+      "marks": [
+        {
+          "name": "root",
+          "type": "group",
+          "from": {
+            "data": "layout"
+          },
+          "properties": {
+            "update": {
+              "width": {
+                "field": "width"
+              },
+              "height": {
+                "field": "height"
+              }
+            }
+          },
+          "marks": [
+            {
+              "name": "marks",
+              "type": "rect",
+              "from": {
+                "data": "summary",
+                "transform": [
+                  {
+                    "type": "stack",
+                    "groupby": [
+                      "month_date"
+                    ],
+                    "field": "count",
+                    "sortby": [
+                      "-unit_type"
+                    ],
+                    "output": {
+                      "start": "count_start",
+                      "end": "count_end"
+                    },
+                    "offset": "zero"
+                  }
+                ]
+              },
+              "properties": {
+                "update": {
+                  "xc": {
+                    "scale": "x",
+                    "field": "month_date"
+                  },
+                  "width": {
+                    "value": 20
+                  },
+                  "y": {
+                    "scale": "y",
+                    "field": "count_start"
+                  },
+                  "y2": {
+                    "scale": "y",
+                    "field": "count_end"
+                  },
+                  "fill": {
+                    "scale": "color",
+                    "field": "unit_type"
+                  }
+                }
+              }
+            }
+          ],
+          "scales": [
+            {
+              "name": "x",
+              "type": "ordinal",
+              "domain": {
+                "data": "month",
+                "field": "date"
+              },
+              "bandSize": 21,
+              "round": true,
+              "points": true,
+              "padding": 1
+            },
+            {
+              "name": "y",
+              "type": "linear",
+              "domain": {
+                "data": "stacked_scale",
+                "field": "sum_count"
+              },
+              "rangeMin": 200,
+              "rangeMax": 0,
+              "round": true,
+              "nice": true,
+              "zero": true
+            },
+            {
+              "name": "color",
+              "type": "ordinal",
+              "domain": [
+                "SFD",
+                "SFA",
+                "MFS",
+                "MFA",
+                "GQ"
+              ],
+              "range": [
+                "#e7ba52",
+                "#c7c7c7",
+                "#aec7e8",
+                "#1f77b4",
+                "#9467bd"
+              ]
+            }
+          ],
+          "axes": [
+            {
+              "type": "x",
+              "scale": "x",
+              "grid": false,
+              "ticks": 5,
+              "title": "Month of 2016",
+              "properties": {
+                "labels": {
+                  "text": {
+                    "template": "{{datum[\"data\"] | time:'%B'}}"
+                  },
+                  "angle": {
+                    "value": 270
+                  },
+                  "align": {
+                    "value": "right"
+                  },
+                  "baseline": {
+                    "value": "middle"
+                  }
+                }
+              }
+            },
+            {
+              "type": "y",
+              "scale": "y",
+              "format": "d",
+              "grid": true,
+              "layer": "back",
+              "title": "# of Permits"
+            }
+          ],
+          "legends": [
+            {
+              "fill": "color",
+              "title": "Permit Type",
+              "properties": {
+                "symbols": {
+                  "shape": {
+                    "value": "circle"
+                  },
+                  "strokeWidth": {
+                    "value": 0
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+    );
+
+  //create the dataset w/ mappings
+  var dataset =   {
+    "data": {
+      "features": []
+    },
+    "mappings": {
+      "query": {
+        "where": "1=1",
+        "returnGeometry": false,
+        "returnDistinctValues": false,
+        "returnIdsOnly": false,
+        "returnCountOnly": false,
+        "outFields": "*",
+        "sqlFormat": "standard",
+        "f": "json"
+      }
+    },
+    "query": {
+      "where": "1=1",
+      "returnGeometry": false,
+      "returnDistinctValues": false,
+      "returnIdsOnly": false,
+      "returnCountOnly": false,
+      "outFields": "*",
+      "sqlFormat": "standard",
+      "f": "json"
+    }
+  };
+
+  chart.tooltip = {
+    "title": "{VAP_TYPE_S}",
+    "content": "{SumAcresByTypes}"
+  };
+
+  //assign to the chart
+  chart.dataset = dataset;
+
+  //show the chart
+  chart.show({
+    elementId: "#chart"
+  });
+
+</script>
+</body>
+</html>
